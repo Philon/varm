@@ -1,3 +1,5 @@
 os/busybox-*
 os/linux-*
 packages
+.vscode
+!.vscode/c_cpp_properties.json
