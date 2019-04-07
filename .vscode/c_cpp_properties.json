@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/opt/varm/linux-5.0.7/include",
+                "/opt/varm/linux-5.0.7/include/uapi",
+                "/opt/varm/linux-5.0.7/arch/arm/include",
+                "/opt/varm/linux-5.0.7/arch/arm/include/uapi",
+                "/opt/varm/linux-5.0.7/arch/arm/include/generated"
+            ],
+            "defines": [
+                "__KERNEL__"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}
