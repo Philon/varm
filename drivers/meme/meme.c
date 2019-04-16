@@ -1,8 +1,20 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/cdev.h>
-#include <linux/fs.h>
+#include <linux/fs.h> // file_operations
 #include <linux/errno.h>
+#include <linux/slab.h> // kmalloc
+#include <linux/uaccess.h> // copy_from/to_user
+
+#define MEME_DEFAULT_DATA_SIZE  0x100
+
+// meme 全局内存数据，相当与一个小u盘
+// 任何应用程序都可以往它内部写东西
+static struct
+{
+    char* data; // 数据空间，之后动态分配
+    int size; // 空间大小
+} meme = {NULL, MEME_DEFAULT_DATA_SIZE};
 
 // 对应用户层seek跳转函数
 static loff_t meme_seek(struct file* filp, loff_t off, int n)
@@ -14,15 +26,45 @@ static loff_t meme_seek(struct file* filp, loff_t off, int n)
 // 对应用户层read读取函数，通常用户接收设备内容，如串口收数据
 static ssize_t meme_read(struct file* filp, char __user *buf, size_t size, loff_t* off)
 {
-    printk("read\n");
-    return 0;
+    // 如果当前文件偏移量已经超出内存大小，直接返回错误
+    if (*off >= meme.size) {
+        return -ENOMEM;
+    }
+
+    // 如果当前可访问内存长度小于要读取的长度，仅读取可访问长度
+    if ((*off + size) > meme.size) {
+        size = meme.size - *off;
+    }
+
+    // 拷贝内核数据到用户空间
+    if (copy_to_user(buf, filp->private_data + *off, size)) {
+        return -EFAULT;
+    }
+
+    *off += size;
+    return size;
 }
 
 // 对应用户层write写入函数，通常用于写入设备内容，如串口发数据
 static ssize_t meme_write(struct file* filp, const char __user *buf, size_t size, loff_t* off)
 {
-    printk("write\n");
-    return 0;
+    // 如果文件偏移超出内存长度，就没必要再写了
+    if (*off >= meme.size) {
+        return 0;
+    }
+
+    // 如果要写入的数据长度比剩余可访问的内存长度还要大，仅写入可访问的内存长度
+    if (*off + size > meme.size) {
+        size = meme.size - *off;
+    }
+
+    // 拷贝用户数据到内核空间
+    if (copy_from_user(filp->private_data + *off, buf, size)) {
+        return -EFAULT;
+    }
+
+    *off += size;
+    return size;
 }
 
 // 对应用户层ioctl控制函数，通常用于一些指定下发，如led的开关控制
@@ -42,14 +84,20 @@ static int meme_mmap(struct file* filp, struct vm_area_struct* area)
 // 对应用户层open打开函数，就是打开设备描述符
 static int meme_open(struct inode* inode, struct file* filp)
 {
-    printk("open\n");
+    // 如果是第一次访问设备节点，分配内存
+    if (meme.data == NULL) {
+        meme.data = kmalloc(MEME_DEFAULT_DATA_SIZE, GFP_KERNEL);
+    }
+
+    filp->private_data = meme.data;
+    
     return 0;
 }
 
 // 对应用户层close关闭函数，就是关闭设备文件
 static int meme_close(struct inode* inode, struct file* filp)
 {
-    printk("close\n");
+    // nothing todo
     return 0;
 }
 
