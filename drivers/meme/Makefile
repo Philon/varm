@@ -1,5 +1,5 @@
 obj-m += meme.o
-meme-objs := main.o meme_proc.o meme_seq_file.o
+meme-objs := main.o meme_proc.o meme_seq_file.o meme_gpio.o
 
 KDIR = /opt/varm/linux-5.0.7
 MODULE = $(notdir $(shell pwd))
